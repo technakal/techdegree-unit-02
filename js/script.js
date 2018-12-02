@@ -4,7 +4,9 @@ FSJS project 2 - List Filter and Pagination
 ******************************************/
 
 document.addEventListener('DOMContentLoaded', () => {
+  const pageElement = document.querySelector('.page');
   const studentUl = document.querySelector('.student-list');
+  let studentList;
   
   /**
    * Creates a DOM searchBarent, sets its attributes, and returns it.
@@ -27,9 +29,11 @@ document.addEventListener('DOMContentLoaded', () => {
    * @param {array} children - An array of HTML searchBarents. These are appended to the parent.
    */
   const appendTo = (parent, children = []) => {
-    children.forEach(child => {
-      parent.appendChild(child);
-    })
+    if(children.length) {
+      children.forEach(child => {
+        parent.appendChild(child);
+      });
+    }
     return parent;
   }
 
@@ -52,7 +56,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchDiv = createElement('div', [{name: 'className', value: 'student-search'}]);
     const searchInput = createElement('input', [{name: 'placeholder', value: 'Search for students...'}]);
     searchInput.addEventListener('keyup', () => {
-      filterStudentBySearch(searchInput.value);
+      studentList = filterStudentBySearch(searchInput.value.toLowerCase());
+      studentUl.parentNode.removeChild(studentUl.parentNode.lastElementChild);
+      if(pageElement.children[1].className == 'no-results') {
+        pageElement.removeChild(pageElement.children[1]);
+      }
+      displayPageCards(createPageCards(studentList));
+      setActivePage(pageElement.lastElementChild.firstElementChild.firstElementChild.firstElementChild);
+      filterStudentsByPage(setActivePage(pageElement.lastElementChild.firstElementChild.firstElementChild), studentList)
     });
     // const searchButton = createElement('button', [{name: 'textContent', value: 'Search'}]);
     appendTo(searchDiv, [searchInput/* , searchButton */]);
@@ -68,19 +79,26 @@ document.addEventListener('DOMContentLoaded', () => {
     appendTo(header, [searchBar]);
   }
 
-   /** TODO: filter students by the entered search criteria 
-    * filterStudentsBySearch(regex)
-      * // filters the student results by regex
-      * // displayPageCount(result)
-      * // set page 1 to active
-      * // set all other pages to inactive
-      * // if result.length > 0
-      *   // displayStudentResults(result)
-      * // else
-      *   // displayNoResults()
+  /**
+   * Checks the list of students to determine which to display.
+   * Returns a list of students that match the entered search value.
+   * @param {string} value - The user-entered search value, formatted to ensure lower case.
    */
   const filterStudentBySearch = (value) => {
-    console.log('TODO! Filter students by the entered search criteria!');
+    const students = studentUl.children;
+    const filteredStudents = [];
+    for(let student = 0; student < students.length; student++) {
+      const studentDetails = students[student].firstElementChild;
+      const studentName = studentDetails.querySelector('h3').textContent.toLowerCase();
+      const studentEmail = studentDetails.querySelector('.email').textContent.toLowerCase();
+      if(studentName.includes(value) || studentEmail.includes(value)) {
+        filteredStudents.push(students[student]);
+        displayStudent(students[student]);
+      } else {
+        hideStudent(students[student]);
+      }
+    }
+    return filteredStudents;
   }
 
    /**************************************
@@ -120,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
     container.addEventListener('click', (e) => {
       e.preventDefault()
       let activePage = setActivePage(e.target);
-      filterStudentsByPage(activePage);
+      filterStudentsByPage(activePage, studentList);
     });
     appendTo(studentUl.parentNode, [container]);
   }
@@ -129,14 +147,16 @@ document.addEventListener('DOMContentLoaded', () => {
    * Sets the clicked pageButton to active. Inactives all other pageButtons.
    * @param {html element} page - The HTML element to be set as active.
    */
-  const setActivePage = (page = document.querySelector('.pagination').firstElementChild.firstElementChild.firstElementChild) => {
-    const otherCards = page.parentNode.parentNode.children;
-    for( let card = 0; card < otherCards.length; card++ ) {
-      const cardLink = otherCards[card].firstElementChild;
-      cardLink.className = '';
+  const setActivePage = (page = '') => {
+    if(page) {
+      const otherCards = page.parentNode.parentNode.children;
+      for( let card = 0; card < otherCards.length; card++ ) {
+        const cardLink = otherCards[card].firstElementChild;
+        cardLink.className = '';
+      }
+      page.className = 'active';
+      return page.textContent;
     }
-    page.className = 'active';
-    return page.textContent;
   }
 
   /**
@@ -144,20 +164,21 @@ document.addEventListener('DOMContentLoaded', () => {
    * Students belong to the page if their index falls within the min and max values.
    * @param {number} page - The page number to be used to set min and max of the student page filter.
    */
-  const filterStudentsByPage = (page)=> {
-    let students = getAllStudents();
-    const min = (page - 1) * 10;
-    let max;
-    min + 10 > students.length 
-      ? max = students.length
-      : max = min + 10;
-    
-    // cTODO: separate this part out for reusability between methods.
-    for(let allStudent = 0; allStudent < students.length; allStudent++) {
-      students[allStudent].classList.add('hide');
-    }
-    for(let activeStudent = min; activeStudent < max; activeStudent++) {
-      students[activeStudent].classList.remove('hide');
+  const filterStudentsByPage = (page, students) => {
+    if(students.length) {
+      const min = (page - 1) * 10;
+      let max;
+      min + 10 > students.length 
+        ? max = students.length
+        : max = min + 10;
+      for(let allStudent = 0; allStudent < students.length; allStudent++) {
+        hideStudent(students[allStudent]);
+      }
+      for(let activeStudent = min; activeStudent < max; activeStudent++) {
+        displayStudent(students[activeStudent]);
+      }
+    } else {
+      displayNoResult();
     }
   }
 
@@ -176,26 +197,48 @@ document.addEventListener('DOMContentLoaded', () => {
    * Returns an HTML collection containing all the students in the DOM.
    */
   const getAllStudents = () => {
-    return studentUl.children;
+    studentList = studentUl.children;
+    return studentList;
   }
 
-   /** TODO: update the DOM to only display the students matching the filter 
-    * displayStudentResults(students)
-      * // sets all searchBarents in the students parameter to `display: block`
-      * // sets all others to `display: none`
+  /**
+   * Sets the passed student to hide.
+   * @param {HTML element} student - One student element.
    */
+  const hideStudent = (student) => {
+    return student.className = 'student-item cf hide';
+  }
 
-   /** TODO: update the DOM to display a message if no students are returned from the filter 
-    * displayNoResults()
-      * // displays the No_Records_Found message
+  /**
+   * Sets the passed student to show.
+   * @param {HTML element} student - One student element.
    */
+  const displayStudent = student => {
+    return student.className = 'student-item cf';
+  }
 
-   /** TODO: BONUS! display the total number of students returned from the filter 
-    * displayStudentCount()
-      * // display the number of students matching the filter
+  /**
+   * Displays a message if no students are available for the DOM.
+   * Works if there is no data returned from the "server", or if the user enters search criteria that matches no student.
    */
+  const displayNoResult = () => {
+    if(pageElement.children[1].className !=='no-results') {
+      const messageDiv = createElement('div', [{name: 'className', value: 'no-results'}]);
+      const message = createElement('p', [{name: 'textContent', value: 'No results found.'}]);
+      appendTo(messageDiv, [message]);
+      pageElement.insertBefore(messageDiv, studentUl);
+    }
+  }
 
   loadSearchBar(createSearchBar());
   displayPageCards(createPageCards(getAllStudents()));
-  filterStudentsByPage(setActivePage());
+
+  if(studentUl.children.length) {
+    const pageCardDiv = pageElement.lastElementChild;
+    const firstCard = pageCardDiv.firstElementChild.firstElementChild;
+    filterStudentsByPage(setActivePage(firstCard), getAllStudents());
+    setActivePage(firstCard.firstElementChild);
+  } else {
+    displayNoResult();
+  }
 });

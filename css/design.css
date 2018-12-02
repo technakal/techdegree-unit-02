@@ -47,8 +47,6 @@ body{
 
   .hide {
     display: none !important;
-    opacity: 0;
-    transition: opacity 0.2s ease-out, display 0.6s ease-out;
   }
 
   .student-item {
@@ -57,7 +55,6 @@ body{
     margin: 0 0 20px 0;
     padding: 0 0 20px 0;
     opacity: 1;
-    transition: all 0.4s ease-in;
   }
 
     .student-details{
@@ -126,3 +123,15 @@ body{
       background-color: #4ba6c3;
       color: #fff;
     }
+
+.no-results {
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.student-count {
+  color: #888;
+  font-size: 0.85rem;
+  font-style: italic;
+}
