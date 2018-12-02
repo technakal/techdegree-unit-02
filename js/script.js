@@ -62,7 +62,6 @@ document.addEventListener('DOMContentLoaded', () => {
         pageElement.removeChild(pageElement.children[1]);
       }
       displayPageCards(createPageCards(studentList));
-      setActivePage(pageElement.lastElementChild.firstElementChild.firstElementChild.firstElementChild);
       filterStudentsByPage(setActivePage(pageElement.lastElementChild.firstElementChild.firstElementChild), studentList)
     });
     // const searchButton = createElement('button', [{name: 'textContent', value: 'Search'}]);
