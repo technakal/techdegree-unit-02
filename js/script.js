@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const pageElement = document.querySelector('.page');
   const studentUl = document.querySelector('.student-list');
   let studentList;
+  let messageDiv;
   
   /**
    * Creates a DOM searchBarent, sets its attributes, and returns it.
@@ -25,8 +26,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /**
    * Appends one or more children searchBarents to the parent searchBarent. Appends in the order in which they are stored in the children array.
-   * @param {html searchBarent} parent - The searchBarent to which the children should be appended.
-   * @param {array} children - An array of HTML searchBarents. These are appended to the parent.
+   * @param {html} parent - The searchBarent to which the children should be appended.
+   * @param {array} children - An array of HTML element. These are appended to the parent.
    */
   const appendTo = (parent, children = []) => {
     if(children.length) {
@@ -37,41 +38,43 @@ document.addEventListener('DOMContentLoaded', () => {
     return parent;
   }
 
-   /**************************************
-    * SEARCH COMPONENT
-   **************************************/
-   /** REQUIREMENTS 
-    * The Student_System shall allow the user to find the Student_Record by the Search_Criteria.
-    * The Search shall {return the Student_Records matching the full Search_Criteria} AND {return the Student_Records matching partial Search_Criteria}.
-    * When the user enters a character in the Search_Input, the Student_System shall trigger the Search.
-    * When the Search returns more than ten Student_Records, the Student_System shall display no more than ten Student_Records on the Page.
-    * When the Search returns more than ten Student_Records, the Student_System shall display the Page_Button for each Page in the Search_Results.
-    * When the Search returns no Student_Records, the Student_System shall display the No_Records_Message in the User_Interface. 
-   */
-
+  /**************************************
+  * SEARCH COMPONENT
+  **************************************/
   /**
    * Creates the searchbar searchBarent. Adds event listener to the searchBarent.
    */
   const createSearchBar = () => {
     const searchDiv = createElement('div', [{name: 'className', value: 'student-search'}]);
     const searchInput = createElement('input', [{name: 'placeholder', value: 'Search for students...'}]);
-    searchInput.addEventListener('keyup', () => {
-      studentList = filterStudentBySearch(searchInput.value.toLowerCase());
-      studentUl.parentNode.removeChild(studentUl.parentNode.lastElementChild);
-      if(pageElement.children[1].className == 'no-results') {
-        pageElement.removeChild(pageElement.children[1]);
-      }
-      displayPageCards(createPageCards(studentList));
-      filterStudentsByPage(setActivePage(pageElement.lastElementChild.firstElementChild.firstElementChild), studentList)
-    });
+    searchInput.addEventListener('keyup', () => handleSearchAction(searchInput.value.toLowerCase()));
     // const searchButton = createElement('button', [{name: 'textContent', value: 'Search'}]);
     appendTo(searchDiv, [searchInput/* , searchButton */]);
     return searchDiv;
   }
 
   /**
+   * Performs a number of actions when the user enters a value in the search bar.
+   * Filters the student list to only include items matching the searchTerm.
+   * Cleans up page cards.
+   * Clears system messages
+   * Displays new page cards based on the filtered students.
+   * Displays the filtered students.
+   * Sets the active page.
+   * @param {string} searchTerm - The user-entered search term, used to filter the student records.
+   */
+  const handleSearchAction = (searchTerm) => {
+    studentList = filterStudentBySearch(searchTerm);
+    cleanUpOldPageCards();
+    clearSystemMessage();
+    displayPageCards(createPageCards(studentList));
+    filterStudentsByPage(setActivePage(pageElement.lastElementChild.firstElementChild.firstElementChild), studentList);
+    setActivePage(pageElement.querySelector('.pagination ul').firstElementChild.firstElementChild);
+  }
+
+  /**
    * Appends the search bar to its parent container, the header element.
-   * @param {html searchBarent} searchBar - The search bar searchBarent.
+   * @param {html} searchBar - The search bar searchBarent.
    */
   const loadSearchBar = (searchBar) => {
     const header = document.querySelector('.page-header');
@@ -84,12 +87,11 @@ document.addEventListener('DOMContentLoaded', () => {
    * @param {string} value - The user-entered search value, formatted to ensure lower case.
    */
   const filterStudentBySearch = (value) => {
-    const students = studentUl.children;
+    const students = getAllStudents();
     const filteredStudents = [];
     for(let student = 0; student < students.length; student++) {
-      const studentDetails = students[student].firstElementChild;
-      const studentName = studentDetails.querySelector('h3').textContent.toLowerCase();
-      const studentEmail = studentDetails.querySelector('.email').textContent.toLowerCase();
+      const studentName = students[student].querySelector('h3').textContent.toLowerCase();
+      const studentEmail = students[student].querySelector('.email').textContent.toLowerCase();
       if(studentName.includes(value) || studentEmail.includes(value)) {
         filteredStudents.push(students[student]);
         displayStudent(students[student]);
@@ -100,15 +102,9 @@ document.addEventListener('DOMContentLoaded', () => {
     return filteredStudents;
   }
 
-   /**************************************
-    * PAGE NUMBER COMPONENT
-   **************************************/
-   /** REQUIREMENTS 
-    * The Student_System shall display the Page_Button for each Page in the Student_System.
-    * The Student_System shall allow the user to select any Page in the Student_System.
-    * When the user clicks the Page_Button, the Student_System shall display the Page in the User_Interface.
-   */
-
+  /**************************************
+  * PAGE NUMBER COMPONENT
+  **************************************/
   /**
    * Returns the page buttons for each group of ten students. Also creates a card for groups that contain less than ten students (the leftovers).
    * @param {HTMLCollection} students - An HTML collection containing all students .
@@ -130,29 +126,45 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
+   * Removes the old page cards so that the DOM doesn't get duplicates.
+   */
+  const cleanUpOldPageCards = () => {
+    const pageCards = pageElement.querySelector('.pagination');
+    pageElement.removeChild(pageCards);
+  }
+
+  /**
    * Appends the page cards to the DOM and initializes event listeners.
-   * @param {HTML element} container - The HTML container holding the page cards.
+   * @param {html} container - The HTML container holding the page cards.
    */
   const displayPageCards = (container) => {
-    container.addEventListener('click', (e) => {
-      e.preventDefault()
-      let activePage = setActivePage(e.target);
-      filterStudentsByPage(activePage, studentList);
-    });
+    container.addEventListener('click', (e) => handlePageButtonClick(e));
     appendTo(studentUl.parentNode, [container]);
   }
 
   /**
+   * Performs a number of actions when the user clicks on a page card.
+   * Prevents default submission activity.
+   * Sets the active page to the clicked page.
+   * Filters students based on active page.
+   * @param {event} e - The triggering event.
+   */
+  const handlePageButtonClick = (e) => {
+    e.preventDefault();
+    if(e.target.tagName == 'A') {
+      let activePage = setActivePage(e.target);
+      filterStudentsByPage(activePage, studentList);
+    }
+  }
+  
+  /**
    * Sets the clicked pageButton to active. Inactives all other pageButtons.
-   * @param {html element} page - The HTML element to be set as active.
+   * @param {html} page - The HTML element to be set as active.
    */
   const setActivePage = (page = '') => {
+    const pageLinks = pageElement.querySelectorAll('.pagination ul li a');
     if(page) {
-      const otherCards = page.parentNode.parentNode.children;
-      for( let card = 0; card < otherCards.length; card++ ) {
-        const cardLink = otherCards[card].firstElementChild;
-        cardLink.className = '';
-      }
+      pageLinks.forEach(link => link.className = '');
       page.className = 'active';
       return page.textContent;
     }
@@ -165,11 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   const filterStudentsByPage = (page, students) => {
     if(students.length) {
-      const min = (page - 1) * 10;
-      let max;
-      min + 10 > students.length 
-        ? max = students.length
-        : max = min + 10;
+      const { min, max } = setPageRange(page, students.length);
       for(let allStudent = 0; allStudent < students.length; allStudent++) {
         hideStudent(students[allStudent]);
       }
@@ -177,21 +185,27 @@ document.addEventListener('DOMContentLoaded', () => {
         displayStudent(students[activeStudent]);
       }
     } else {
-      displayNoResult();
+      displaySystemMessage(displayNoResult());
     }
   }
 
-   /**************************************
-    * DISPLAY RESULTS COMPONENT
-   **************************************/
-   /** REQUIREMENTS 
-    * When the user has JavaScript disabled, the Student_System shall display all Student_Records.
-    * The Student_System shall display no more than ten Student_Records on the Page.
-    * The student_System shall display the current Page.
-    * When no Student_Records are available, the Student_System shall display the No_Records_Message.
-    * [BONUS] The Student_System shall display the Total_Student_Count in the User_Interface.
+  /**
+   * Sets the min and max values to be used when determining which students to display in the DOM.
+   * @param {html} page - The currently selected page button.
+   * @param {number} totalStudents - The number of student records available for display.
    */
+  const setPageRange = (page, totalStudents ) => {
+    const min = (page - 1) * 10;
+    let max;
+    min + 10 > totalStudents
+      ? max = totalStudents
+      : max = min + 10;
+    return { min, max };
+  }
 
+  /**************************************
+  * DISPLAY RESULTS COMPONENT
+  **************************************/
   /**
    * Returns an HTML collection containing all the students in the DOM.
    */
@@ -202,7 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /**
    * Sets the passed student to hide.
-   * @param {HTML element} student - One student element.
+   * @param {html} student - One student element.
    */
   const hideStudent = (student) => {
     return student.className = 'student-item cf hide';
@@ -210,27 +224,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /**
    * Sets the passed student to show.
-   * @param {HTML element} student - One student element.
+   * @param {html} student - One student element.
    */
   const displayStudent = student => {
     return student.className = 'student-item cf';
   }
 
   /**
-   * Displays a message if no students are available for the DOM.
-   * Works if there is no data returned from the "server", or if the user enters search criteria that matches no student.
+   * Creates a div in the DOM for displaying messages to the user.
    */
-  const displayNoResult = () => {
-    if(pageElement.children[1].className !=='no-results') {
-      const messageDiv = createElement('div', [{name: 'className', value: 'no-results'}]);
-      const message = createElement('p', [{name: 'textContent', value: 'No results found.'}]);
-      appendTo(messageDiv, [message]);
-      pageElement.insertBefore(messageDiv, studentUl);
-    }
+  const createMessageDiv = () => {
+    const div = createElement('div', [{ name: 'id', value: 'messages'}]);
+    pageElement.insertBefore(div, studentUl);
+    messageDiv = div;
   }
 
+  /**
+   * Displays a message in the DOM.
+   */
+  const displaySystemMessage = (message) => messageDiv.innerHTML = `<p>${message}</p>`;
+  
+  /**
+   * Clears system messages from the DOM.
+   */
+  const clearSystemMessage = () => messageDiv.innerHTML = '';
+
+  /**
+   * A specific type of system message resulting when the database or the search criteria return no student records.
+   */
+  const displayNoResult = () => 'No results found.';
+
+  /**************************************
+  * ON LOAD PROTOCOLS
+  **************************************/
   loadSearchBar(createSearchBar());
   displayPageCards(createPageCards(getAllStudents()));
+  createMessageDiv();
 
   if(studentUl.children.length) {
     const pageCardDiv = pageElement.lastElementChild;
@@ -238,6 +267,6 @@ document.addEventListener('DOMContentLoaded', () => {
     filterStudentsByPage(setActivePage(firstCard), getAllStudents());
     setActivePage(firstCard.firstElementChild);
   } else {
-    displayNoResult();
+    displaySystemMessage(displayNoResult());
   }
 });
