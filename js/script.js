@@ -69,7 +69,9 @@ document.addEventListener('DOMContentLoaded', () => {
     clearSystemMessage();
     displayPageCards(createPageCards(studentList));
     filterStudentsByPage(setActivePage(pageElement.lastElementChild.firstElementChild.firstElementChild), studentList);
-    setActivePage(pageElement.querySelector('.pagination ul').firstElementChild.firstElementChild);
+    if(studentList.length) {
+      setActivePage(pageElement.querySelector('.pagination ul').firstElementChild.firstElementChild);
+    }
   }
 
   /**
