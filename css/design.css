@@ -45,10 +45,19 @@ body{
 
 .student-list{}
 
-  .student-item{
+  .hide {
+    display: none !important;
+    opacity: 0;
+    transition: opacity 0.2s ease-out, display 0.6s ease-out;
+  }
+
+  .student-item {
+    border-bottom: 1px solid #eaeaea;
+    display: block;
     margin: 0 0 20px 0;
     padding: 0 0 20px 0;
-    border-bottom: 1px solid #eaeaea;
+    opacity: 1;
+    transition: all 0.4s ease-in;
   }
 
     .student-details{
